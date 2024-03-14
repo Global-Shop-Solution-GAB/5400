@@ -1,0 +1,350 @@
+Program.Sub.ScreenSU.Start
+Gui.FormNewParts..Create
+Gui.FormNewParts..Caption("New Parts")
+Gui.FormNewParts..Size(21645,13770)
+Gui.FormNewParts..MinX(0)
+Gui.FormNewParts..MinY(0)
+Gui.FormNewParts..Position(0,0)
+Gui.FormNewParts..BackColor(-2147483633)
+Gui.FormNewParts..MousePointer(0)
+Gui.FormNewParts..Event(UnLoad,FormNewParts_UnLoad)
+Gui.FormNewParts.gsgcParts.Create(GsGridControl)
+Gui.FormNewParts.gsgcParts.Size(21465,12840)
+Gui.FormNewParts.gsgcParts.Position(0,675)
+Gui.FormNewParts.gsgcParts.Anchor(15)
+Gui.FormNewParts.gsgcParts.Event(RowCellClick,gsgcParts_RowCellClick)
+Gui.FormNewParts.dtp1.Create(DatePicker)
+Gui.FormNewParts.dtp1.Size(1935,285)
+Gui.FormNewParts.dtp1.Position(1830,225)
+Gui.FormNewParts.dtp1.Event(Change,dtp1_Change)
+Gui.FormNewParts.lblPartsCreatedSince.Create(Label,"Parts Created Since :",True,2175,255,0,180,330,True,0,"Arial",8,-2147483633,0)
+Gui.FormNewParts.cmdRefresh.Create(Button)
+Gui.FormNewParts.cmdRefresh.Size(1065,375)
+Gui.FormNewParts.cmdRefresh.Position(3870,180)
+Gui.FormNewParts.cmdRefresh.Caption("Refresh")
+Gui.FormNewParts.cmdRefresh.Event(Click,cmdRefresh_Click)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+V.Global.bReset.Declare(Boolean, False)
+V.Global.bTry.Declare(Boolean, False)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'GCG_Cardinal_newPartsDashboard.g2u
+'Trey S
+'01-02-2018
+'For Cardinal Systems
+'This is a quick dashboard made for Cardinal's go live
+'It loads all parts, and can then show parts created since a certain date
+
+F.Intrinsic.Control.CallSub(CreateContextMenu)
+F.Intrinsic.Control.CallSub(LoadData)
+F.Intrinsic.Control.CallSub(LoadGrid)
+F.Intrinsic.Control.CallSub(Deserialize)
+
+'F.Intrinsic.Control.CallSub(cmdRefresh_Click)
+
+GUI.FormNewParts..Show
+Program.Sub.Main.End
+
+Program.Sub.CreateContextMenu.Start
+GUI.FormNewParts..ContextMenuCreate("ctxNewParts")
+GUI.FormNewParts.gsgcparts.ContextMenuAttach("ctxNewParts")
+GUI.FormNewParts..ContextMenuAddItem("ctxNewParts", "Reset", 0, "Reset Formatting")
+GUI.FormNewParts..ContextMenuSetItemEventHandler("ctxNewParts", "Reset", "ctxReset")
+GUI.FormNewParts..ContextMenuAddItem("ctxNewParts", "Export", 0, "Export")
+GUI.FormNewParts..ContextMenuSetItemEventHandler("ctxNewParts", "Export", "ctxExport")
+GUI.FormNewParts..ContextMenuAddItem("ctxNewParts", "Refresh", 0, "Full Refresh")
+GUI.FormNewParts..ContextMenuSetItemEventHandler("ctxNewParts", "Refresh", "ctxFullRefresh")
+Program.Sub.CreateContextMenu.End
+
+Program.Sub.LoadData.Start
+V.Local.sSQL.Declare(String)
+
+F.Intrinsic.Control.If(V.DataTable.dtParts.Exists)
+	F.Intrinsic.Control.CallSub(Serialize)
+F.Intrinsic.Control.EndIf
+
+V.Local.sSQL.Set("Select RTRIM(Part) as Part, RTRIM(location) as Location, RTRIM(DESCRIPTION) as Description, RTRIM(product_line) as PL, RTRIM(UM_INVENTORY) as UM, RTRIM(CODE_SORT) as CODE_SORT, RTRIM(CODE_SOURCE) as CODE_SOURCE, QTY_ONHAND as Qty, Part_Create_Date, RTRIM(Part_Create_USER) as Part_Create_User, DATE_LAST_CHG, RTRIM(WHO_CHG_LAST) as Last_Changed_By from V_INVENTORY_ALL order by DATE_LAST_CHG desc")
+
+F.ODBC.Connection!Con.OpenCompanyConnection
+F.Data.DataTable.CreateFromSQL("dtParts", "Con", V.Local.sSQL, True)
+F.ODBC.Connection!Con.Close
+
+F.Data.Dictionary.Create("dictSource")
+F.Data.Dictionary.AddItem("dictSource", "P", "Purchase to Stock")
+F.Data.Dictionary.AddItem("dictSource", "J", "Purchase to Job")
+F.Data.Dictionary.AddItem("dictSource", "M", "Manufacture to Stock")
+F.Data.Dictionary.AddItem("dictSource", "F", "Manufacture to Job")
+F.Data.Dictionary.AddItem("dictSource", "C", "Consigned to Stock")
+F.Data.Dictionary.AddItem("dictSource", "G", "Consigned to Job")
+F.Data.Dictionary.SetDefaultReturn("dictSource", "")
+
+F.Data.DataTable.FillFromDictionary("dtParts", "dictSource", "CODE_SOURCE")
+F.Data.Dictionary.Close("dictSource")
+
+F.Data.DataView.Create("dtParts", "dvFilteredParts", 22)
+Program.Sub.LoadData.End
+
+Program.Sub.LoadGrid.Start
+GUI.FormNewParts.gsgcParts.SuspendLayout
+
+GUI.FormNewParts.gsgcParts.AddGridviewFromDataview("gvParts", "dtParts", "dvFilteredParts")
+
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part", "HeaderFontBold", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Location", "HeaderFontBold", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Description", "HeaderFontBold", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "PL", "HeaderFontBold", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "UM", "HeaderFontBold", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "CODE_SORT", "HeaderFontBold", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Qty", "HeaderFontBold", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "DATE_LAST_CHG", "HeaderFontBold", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Last_Changed_By", "HeaderFontBold", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_Date", "HeaderFontBold", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_User", "HeaderFontBold", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "CODE_SOURCE", "HeaderFontBold", True)
+
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part", "ReadOnly", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Location", "ReadOnly", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Description", "ReadOnly", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "PL", "ReadOnly", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "UM", "ReadOnly", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "CODE_SORT", "ReadOnly", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Qty", "ReadOnly", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "DATE_LAST_CHG", "ReadOnly", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Last_Changed_By", "ReadOnly", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_Date", "ReadOnly", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_User", "ReadOnly", True)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "CODE_SOURCE", "ReadOnly", True)
+
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part", "AllowEdit", False)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Location", "AllowEdit", False)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Description", "AllowEdit", False)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "PL", "AllowEdit", False)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "UM", "AllowEdit", False)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "CODE_SORT", "AllowEdit", False)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Qty", "AllowEdit", False)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "DATE_LAST_CHG", "AllowEdit", False)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Last_Changed_By", "AllowEdit", False)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_Date", "AllowEdit", False)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_User", "AllowEdit", False)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "CODE_SOURCE", "AllowEdit", False)
+
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part", "HeaderHAlignment", "Center")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Location", "HeaderHAlignment", "Center")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Description", "HeaderHAlignment", "Center")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "PL", "HeaderHAlignment", "Center")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "UM", "HeaderHAlignment", "Center")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "CODE_SORT", "HeaderHAlignment", "Center")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Qty", "HeaderHAlignment", "Center")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "DATE_LAST_CHG", "HeaderHAlignment", "Center")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Last_Changed_By", "HeaderHAlignment", "Center")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_Date", "HeaderHAlignment", "Center")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_User", "HeaderHAlignment", "Center")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "CODE_SOURCE", "HeaderHAlignment", "Center")
+
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part", "MinWidth", 80)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Location", "MinWidth", 30)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Description", "MinWidth", 150)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "PL", "MinWidth", 30)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "UM", "MinWidth", 30)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "CODE_SORT", "MinWidth", 30)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Qty", "MinWidth", 80)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "DATE_LAST_CHG", "MinWidth", 80)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Last_Changed_By", "MinWidth", 50)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_Date", "MinWidth", 80)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_User", "MinWidth", 50)
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "CODE_SOURCE", "MinWidth", 80)
+
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "CODE_SORT", "Caption", "Sort Code")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "DATE_LAST_CHG", "Caption", "Last Change Date")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Last_Changed_By", "Caption", "Last Changed By")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_Date", "Caption", "Created On")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_User", "Caption", "Created By")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "CODE_SOURCE", "Caption", "Source")
+
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_Date", "DisplayCustomDateTime", "d")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Date_last_CHG", "DisplayCustomDateTime", "d")
+
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part_Create_Date", "CellHAlignment", "Center")
+GUI.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Date_last_CHG", "CellHAlignment", "Center")
+
+Gui.FormNewParts.gsgcParts.SetColumnProperty("gvParts", "Part", "CellForeColor", "Blue")
+
+GUI.FormNewParts.gsgcParts.SetGridviewProperty("gvParts", "EnableAppearanceOddRow", True)
+
+GUI.FormNewParts.gsgcParts.MainView("gvParts")
+GUI.FormNewParts.gsgcParts.ResumeLayout
+Program.Sub.LoadGrid.End
+
+Program.Sub.cmdRefresh_Click.Start
+V.Local.sFilter.Declare(String)
+
+GUI.FormNewParts.cmdRefresh.Enabled(False)
+GUI.FormNewParts.gsgcParts.SuspendLayout
+F.Intrinsic.String.Build("PART_CREATE_DATE >= '{0}'", V.Screen.FormNewParts!dtp1.Value, V.Local.sFilter)
+F.Data.DataView.SetFilter("dtParts", "dvFilteredParts", V.Local.sFilter)
+GUI.FormNewParts.gsgcParts.ResumeLayout
+GUI.FormNewParts.cmdRefresh.Enabled(True)
+Program.Sub.cmdRefresh_Click.End
+
+Program.Sub.ctxReset.Start
+GUI.FormNewParts.gsgcParts.Visible(False)
+GUI.FormNewParts.gsgcParts.SuspendLayout
+
+F.ODBC.Connection!Com.OpenCommonConnection
+
+F.ODBC.Connection!Com.Execute("delete from GS_REGISTRY where REG_ID = 20190102")
+
+F.ODBC.Connection!Com.Close
+
+V.Global.bReset.Set(True)
+F.Intrinsic.Control.CallSub(ctxFullRefresh)
+V.Global.bReset.Set(False)
+
+GUI.FormNewParts.gsgcParts.ResumeLayout
+GUI.FormNewParts.gsgcParts.Visible(True)
+Program.Sub.ctxReset.End
+
+Program.Sub.ctxFullRefresh.Start
+GUI.FormNewParts..Enabled(False)
+
+F.Intrinsic.Control.If(V.Global.bReset.Not)
+	F.Intrinsic.Control.CallSub(Serialize)
+F.Intrinsic.Control.EndIf
+F.Data.DataTable.Close("dtParts")
+V.Global.bReset.Set(False)
+F.Intrinsic.Control.CallSub(LoadData)
+F.Intrinsic.Control.CallSub(LoadGrid)
+F.Intrinsic.Control.CallSub(Deserialize)
+
+GUI.FormNewParts..Enabled(True)
+Program.Sub.ctxFullRefresh.End
+
+Program.Sub.Serialize.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local.sSerialize.Declare
+F.Intrinsic.Control.If(V.DataTable.dtParts.Exists, =, False)
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+GUI.FormNewParts.gsgcparts.Serialize("gvParts", V.Local.sSerialize)
+F.Global.Registry.AddValue(V.Caller.User, V.Caller.CompanyCode, "gvParts", 20190102, 1000, False, "Serialize", False, 0, -999.0, 1/1/1980, 12:00:00 AM, V.Local.sSerialize)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Serialize.End
+
+Program.Sub.Deserialize.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local.sSerialize.Declare
+
+'Delete old registry records
+F.Global.Registry.ReadValue(V.Caller.User, V.Caller.CompanyCode, "gvParts", 20190102, 0,5,"",V.Local.sSerialize)
+F.Intrinsic.Control.If(V.Local.sSerialize,<>,"")
+	F.ODBC.Connection!common.OpenConnection(V.Ambient.Ccon, V.Ambient.Cuser, V.Ambient.Cpass)
+	F.ODBC.Connection!common.Execute("delete from GS_REGISTRY where REG_ID = 20190102")
+	F.ODBC.Connection!common.Close
+F.Intrinsic.Control.EndIf
+
+F.Global.Registry.ReadValue(V.Caller.User,V.Caller.CompanyCode,"gvParts", "20190102" ,1000,   6, "", V.Local.sSerialize)
+F.Intrinsic.Control.If(V.Local.sSerialize.Trim,<>,"")
+	GUI.FormNewParts.gsgcparts.Deserialize(V.Local.sSerialize)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+
+	F.Intrinsic.Control.If(V.Global.bTry)
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber,V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End
+	F.Intrinsic.Control.Else
+		'if an additional column is added but the registry record is still there, it will crash, so here we try once to do a reset
+		'this for while we're still working on it mainly
+		V.Global.bTry.Set(True)
+		F.Intrinsic.Control.CallSub(ctxFullRefresh)
+	F.Intrinsic.Control.EndIf
+	
+F.Intrinsic.Control.EndTry
+Program.Sub.Deserialize.End
+
+Program.Sub.ctxExport.Start
+v.Local.sDate.Declare(String)
+v.Local.sTime.Declare(String)
+v.Local.iCount.Declare
+v.Local.sMsg.Declare(String)
+v.Local.bCheck.Declare(boolean)
+V.Local.sFileExport.Declare(String)
+
+GUI.FormNewParts.gsgcParts.GetRowCount("gvParts",v.Local.iCount)
+Function.Intrinsic.Control.BlockEvents
+GUI.FormNewParts..Enabled(false)
+f.Intrinsic.Control.If(v.Local.iCount,=,0)
+	f.Intrinsic.UI.Msgbox("No rows in grid to export!")
+	GUI.FormNewParts..SetFocus
+	GUI.FormNewParts..Enabled(True)
+	Function.Intrinsic.Control.UNBlockEvents
+	F.Intrinsic.Control.ExitSub
+f.Intrinsic.Control.EndIf
+
+f.Intrinsic.String.Format(v.Ambient.Date,"MMDDYYYY",v.Local.sDate)
+f.Intrinsic.String.Format(v.Ambient.Now,"HhNn",v.Local.sTime)
+
+F.Intrinsic.String.Build("{0}\New_Parts_{1}_{2}.xlsx",V.Caller.LocalGssTempDir,v.Local.sDate.trim,v.Local.sTime.Trim,V.Local.sFileExport)
+f.Intrinsic.File.Exists(v.Local.sFileExport,v.Local.bCheck)
+F.Intrinsic.Control.If(v.Local.bCheck,=,true)
+	f.Intrinsic.File.DeleteFile(v.Local.sFileExport)
+F.Intrinsic.Control.EndIf
+GUI.FormNewParts.gsgcparts.Export(V.Local.sFileExport,"xlsx")
+f.Intrinsic.File.Exists(v.Local.sFileExport,v.Local.bCheck)
+
+F.Intrinsic.Control.If(v.Local.bCheck,=,False)
+	f.Intrinsic.UI.Msgbox("Export cancelled (File does not exist)")
+	GUI.FormNewParts..SetFocus
+	GUI.FormNewParts..Enabled(True)
+	Function.Intrinsic.Control.UNBlockEvents
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+F.Intrinsic.Task.ShellExec(0,"",V.Local.sFileExport,"","",1)
+
+Function.Intrinsic.Control.UNBlockEvents
+GUI.FormNewParts..SetFocus
+GUI.FormNewParts..Enabled(True)
+F.Intrinsic.Control.ExitSub
+Program.Sub.ctxExport.End
+
+Program.Sub.FormNewParts_UnLoad.Start
+F.Intrinsic.Control.CallSub(Serialize)
+F.Intrinsic.Control.End
+Program.Sub.FormNewParts_UnLoad.End
+
+Program.Sub.gsgcParts_RowCellClick.Start
+V.Local.sPart.Declare(String)
+V.Local.sLoc.Declare(String)
+V.Local.sParams.Declare(String)
+
+F.Intrinsic.Control.If(V.Args.Column.Trim, =, "Part", and, V.Args.Clicks, >, 1)
+	
+	GUI.FormNewParts..Enabled(False)
+	GUI.FormNewParts.gsgcParts.GetCellValueByColumnName("gvParts", "Part", V.Args.RowIndex, V.Local.sPart)
+	GUI.FormNewParts.gsgcParts.GetCellValueByColumnName("gvParts", "Location", V.Args.RowIndex, V.Local.sLoc)
+	F.Intrinsic.String.Build("{2}!*!O!*!ZDR!*!ZDR!*!{0}!*!{1}", V.Local.sPart, V.Local.sLoc, V.Caller.CompanyCode, V.Local.sParams)
+	F.Global.General.CallWrapperSync(3500, V.Local.sParams)
+	GUI.FormNewParts..Enabled(True)
+
+F.Intrinsic.Control.EndIf
+Program.Sub.gsgcParts_RowCellClick.End
+
+Program.Sub.dtp1_Change.Start
+F.Intrinsic.Control.CallSub(cmdRefresh_click)
+Program.Sub.dtp1_Change.End
+
+
